@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - Unidade de volume
 
-enum VolumeUnit: String, Codable, CaseIterable, Identifiable {
+enum VolumeUnit: String, Codable, CaseIterable, Identifiable, Sendable {
     case milliliters
     case fluidOunces
 
@@ -78,7 +78,7 @@ enum VolumeUnit: String, Codable, CaseIterable, Identifiable {
 
 // MARK: - Registro de consumo
 
-struct DrinkEntry: Identifiable, Codable, Equatable {
+struct DrinkEntry: Identifiable, Codable, Equatable, Sendable {
     var id: UUID
     var date: Date
     var amountML: Double
@@ -91,7 +91,7 @@ struct DrinkEntry: Identifiable, Codable, Equatable {
 }
 
 /// Total consumido em um dia (usado no histórico e no gráfico).
-struct DayTotal: Identifiable, Equatable {
+struct DayTotal: Identifiable, Equatable, Sendable {
     var id: Date { date }
     let date: Date
     let totalML: Double
@@ -113,7 +113,7 @@ enum DrinkSymbol {
 
 // MARK: - Ajustes
 
-struct AppSettings: Codable, Equatable {
+struct AppSettings: Codable, Equatable, Sendable {
     var dailyGoalML: Double = 2000
     var unit: VolumeUnit = .milliliters
     var quickAmountsML: [Double] = [200, 350, 500, 750]

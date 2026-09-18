@@ -3,18 +3,20 @@
 //  Água Diária
 //
 //  Fonte única de verdade do app: registros + ajustes + persistência.
-//  Usa ObservableObject (e não @Observable) para funcionar no iOS 16.
+//  Usa a macro @Observable (iOS 17+) no lugar de ObservableObject, e
+//  concorrência estruturada (async/await) para falar com o NotificationManager.
 //
 
 import Foundation
-import Combine
 
-final class WaterStore: ObservableObject {
+@MainActor
+@Observable
+final class WaterStore {
 
     /// Registros ordenados do mais recente para o mais antigo.
-    @Published private(set) var entries: [DrinkEntry] = []
+    private(set) var entries: [DrinkEntry] = []
 
-    @Published var settings: AppSettings {
+    var settings: AppSettings {
         didSet { handleSettingsChange(from: oldValue) }
     }
 
@@ -51,7 +53,7 @@ final class WaterStore: ObservableObject {
             settings = AppSettings()
         }
         loadEntries()
-        NotificationManager.refresh(with: settings)
+        Task { await NotificationManager.refresh(with: settings) }
     }
 
     // MARK: - Ações
@@ -191,7 +193,8 @@ final class WaterStore: ObservableObject {
             old.reminderEndHour != settings.reminderEndHour
 
         if lembretesMudaram {
-            NotificationManager.refresh(with: settings)
+            let novosAjustes = settings
+            Task { await NotificationManager.refresh(with: novosAjustes) }
         }
     }
 }

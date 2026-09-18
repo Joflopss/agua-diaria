@@ -4,11 +4,14 @@
 //
 //  Aba "Hoje": o quanto já foi bebido, atalhos de registro e a lista do dia.
 //
+//  Usa @Environment(WaterStore.self) (padrão @Observable) no lugar de
+//  @EnvironmentObject.
+//
 
 import SwiftUI
 
 struct TodayView: View {
-    @EnvironmentObject private var store: WaterStore
+    @Environment(WaterStore.self) private var store
     @State private var showingCustomAmount = false
 
     private var unit: VolumeUnit { store.settings.unit }
@@ -63,28 +66,32 @@ struct TodayView: View {
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 20)
+            .liquidGlassCard()
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
     }
 
     private var quickAddSection: some View {
         Section("Adicionar") {
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 76), spacing: 12)],
-                spacing: 12
-            ) {
-                ForEach(store.settings.quickAmountsML, id: \.self) { amountML in
-                    QuickAddButton(
-                        label: unit.format(amountML),
-                        symbol: DrinkSymbol.name(forML: amountML)
-                    ) {
-                        add(amountML)
+            LiquidGlassGroup {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 76), spacing: 12)],
+                    spacing: 12
+                ) {
+                    ForEach(store.settings.quickAmountsML, id: \.self) { amountML in
+                        QuickAddButton(
+                            label: unit.format(amountML),
+                            symbol: DrinkSymbol.name(forML: amountML)
+                        ) {
+                            add(amountML)
+                        }
                     }
-                }
-                QuickAddButton(label: "Outro", symbol: "plus") {
-                    showingCustomAmount = true
+                    QuickAddButton(label: "Outro", symbol: "plus") {
+                        showingCustomAmount = true
+                    }
                 }
             }
             .padding(.vertical, 6)
@@ -160,4 +167,9 @@ struct TodayView: View {
             store.delete(atuais[index])
         }
     }
+}
+
+#Preview {
+    TodayView()
+        .environment(WaterStore())
 }

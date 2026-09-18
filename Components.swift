@@ -4,6 +4,11 @@
 //
 //  Peças visuais reutilizadas pelas telas.
 //
+//  Ganhou suporte a Liquid Glass (iOS 26/27): quando o app roda num
+//  sistema compatível, cartões e botões usam .glassEffect / .buttonStyle(.glass...).
+//  Em versões mais antigas (iOS 17 até 25), cai automaticamente para um
+//  material translúcido (.ultraThinMaterial) parecido, sem travar o build.
+//
 
 import SwiftUI
 import UIKit
@@ -35,6 +40,81 @@ enum Haptics {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         case .success:
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+        }
+    }
+}
+
+// MARK: - Liquid Glass (iOS 26+, com alternativa para versões anteriores)
+
+extension View {
+    /// Cartão em Liquid Glass — usado no anel de progresso e nos resumos.
+    /// A partir do iOS 26 usa `.glassEffect`; antes disso, usa um material
+    /// translúcido comum para manter a compatibilidade com iOS 17+.
+    @ViewBuilder
+    func liquidGlassCard(cornerRadius: CGFloat = 28) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(
+                .regular,
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
+        } else {
+            self.background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+        }
+    }
+
+    /// "Pílula" em Liquid Glass com brilho e resposta ao toque — usada nos
+    /// botões de atalho de adição rápida.
+    @ViewBuilder
+    func liquidGlassChip(tint: Color = Theme.accent, cornerRadius: CGFloat = 14) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(
+                .regular.tint(tint.opacity(0.35)).interactive(),
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
+        } else {
+            self.background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(tint.opacity(0.12))
+            )
+        }
+    }
+
+    /// Estilo de botão primário: `.glassProminent` no iOS 26+, `.borderedProminent` antes disso.
+    @ViewBuilder
+    func primaryGlassButton() -> some View {
+        if #available(iOS 26.0, *) {
+            self.buttonStyle(.glassProminent)
+        } else {
+            self.buttonStyle(.borderedProminent)
+        }
+    }
+
+    /// Estilo de botão secundário: `.glass` no iOS 26+, `.bordered` antes disso.
+    @ViewBuilder
+    func secondaryGlassButton() -> some View {
+        if #available(iOS 26.0, *) {
+            self.buttonStyle(.glass)
+        } else {
+            self.buttonStyle(.bordered)
+        }
+    }
+}
+
+/// Agrupa vários elementos em Liquid Glass para que o sistema funda e
+/// morfe as formas entre si (por exemplo, os botões de atalho). Antes do
+/// iOS 26, apenas devolve o conteúdo sem agrupamento especial.
+struct LiquidGlassGroup<Content: View>: View {
+    var spacing: CGFloat = 12
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { content }
+        } else {
+            content
         }
     }
 }
@@ -102,13 +182,10 @@ struct QuickAddButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Theme.accent.opacity(0.12))
-            )
             .foregroundColor(Theme.accent)
         }
         .buttonStyle(.plain)
+        .liquidGlassChip()
     }
 }
 
@@ -169,15 +246,17 @@ struct AmountInputSheet: View {
                 }
                 .padding(.top, 20)
 
-                HStack(spacing: 12) {
-                    ForEach(steps, id: \.self) { step in
-                        Button {
-                            text = format(typedValue + step)
-                        } label: {
-                            Text("+\(format(step))")
-                                .frame(minWidth: 52)
+                LiquidGlassGroup {
+                    HStack(spacing: 12) {
+                        ForEach(steps, id: \.self) { step in
+                            Button {
+                                text = format(typedValue + step)
+                            } label: {
+                                Text("+\(format(step))")
+                                    .frame(minWidth: 52)
+                            }
+                            .secondaryGlassButton()
                         }
-                        .buttonStyle(.bordered)
                     }
                 }
 
@@ -186,7 +265,7 @@ struct AmountInputSheet: View {
                     onConfirm(amountML)
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
+                .primaryGlassButton()
                 .controlSize(.large)
                 .disabled(amountML <= 0)
 

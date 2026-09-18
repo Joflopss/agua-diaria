@@ -5,6 +5,9 @@
 //  Lembretes locais e repetitivos. Não precisa de chave no Info.plist
 //  nem de capability — só da permissão do usuário.
 //
+//  Reescrito com async/await (em vez de completion handlers) para ficar
+//  em conformidade com a checagem estrita de concorrência do Swift 6.
+//
 
 import Foundation
 import UserNotifications
@@ -21,24 +24,26 @@ enum NotificationManager {
         "Beba água e registre no app."
     ]
 
-    /// Pede autorização e devolve o resultado na thread principal.
-    static func requestAuthorization(_ completion: @escaping (Bool) -> Void) {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            DispatchQueue.main.async { completion(granted) }
+    /// Pede autorização ao usuário e devolve se foi concedida.
+    static func requestAuthorization() async -> Bool {
+        let center = UNUserNotificationCenter.current()
+        do {
+            return try await center.requestAuthorization(options: [.alert, .sound])
+        } catch {
+            return false
         }
     }
 
     /// Remove os lembretes antigos e reagenda conforme os ajustes atuais.
-    static func refresh(with settings: AppSettings) {
+    static func refresh(with settings: AppSettings) async {
         let center = UNUserNotificationCenter.current()
-        center.getPendingNotificationRequests { requests in
-            let ids = requests.map { $0.identifier }.filter { $0.hasPrefix(identifierPrefix) }
-            if !ids.isEmpty {
-                center.removePendingNotificationRequests(withIdentifiers: ids)
-            }
-            guard settings.remindersEnabled else { return }
-            schedule(with: settings)
+        let requests = await center.pendingNotificationRequests()
+        let ids = requests.map { $0.identifier }.filter { $0.hasPrefix(identifierPrefix) }
+        if !ids.isEmpty {
+            center.removePendingNotificationRequests(withIdentifiers: ids)
         }
+        guard settings.remindersEnabled else { return }
+        schedule(with: settings)
     }
 
     static func cancelAll() {

@@ -2,31 +2,37 @@
 //  AguaDiariaApp.swift
 //  Água Diária
 //
-//  Ponto de entrada. Deployment target: iOS 16.0 (roda igual no iOS 17).
+//  Ponto de entrada. Deployment target: iOS 17.0 (testado até iOS 26/27).
+//  Usa @Observable + @Environment (padrão moderno) no lugar de
+//  ObservableObject/@EnvironmentObject.
 //
 
 import SwiftUI
 
 @main
 struct AguaDiariaApp: App {
-    @StateObject private var store = WaterStore()
+    @State private var store = WaterStore()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environmentObject(store)
+                .environment(store)
                 .tint(Theme.accent)
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) {
             // Garante que nada se perca quando o app sai da tela.
-            if phase != .active { store.save() }
+            if scenePhase != .active { store.save() }
         }
     }
 }
 
 struct RootView: View {
     var body: some View {
+        // No iOS 26/27, o TabView passa a usar automaticamente a barra em
+        // Liquid Glass (translúcida, com "lente" sobre o conteúdo) assim que
+        // o app é compilado com o SDK novo — não é preciso nenhum código
+        // extra para isso.
         TabView {
             TodayView()
                 .tabItem { Label("Hoje", systemImage: "drop.fill") }
@@ -40,10 +46,7 @@ struct RootView: View {
     }
 }
 
-#if DEBUG
-struct RootView_Previews: PreviewProvider {
-    static var previews: some View {
-        RootView().environmentObject(WaterStore())
-    }
+#Preview {
+    RootView()
+        .environment(WaterStore())
 }
-#endif

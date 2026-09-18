@@ -4,11 +4,15 @@
 //
 //  Aba "Ajustes": meta, unidade, atalhos, lembretes e dados.
 //
+//  Usa @Environment(WaterStore.self) + Bindable(store) (padrão @Observable)
+//  no lugar de @EnvironmentObject / $store. O pedido de permissão de
+//  notificação agora é assíncrono (async/await).
+//
 
 import SwiftUI
 
 struct SettingsView: View {
-    @EnvironmentObject private var store: WaterStore
+    @Environment(WaterStore.self) private var store
 
     @State private var showingGoalCalculator = false
     @State private var showingNewQuickAmount = false
@@ -16,6 +20,10 @@ struct SettingsView: View {
     @State private var showingPermissionAlert = false
 
     private var unit: VolumeUnit { store.settings.unit }
+
+    /// Ponte para conseguir Binding<T> a partir de um objeto @Observable
+    /// injetado via @Environment (equivalente ao antigo `$store`).
+    private var bindableStore: Bindable<WaterStore> { Bindable(store) }
 
     var body: some View {
         NavigationStack {
@@ -28,7 +36,7 @@ struct SettingsView: View {
             }
             .navigationTitle("Ajustes")
             .sheet(isPresented: $showingGoalCalculator) {
-                GoalCalculatorSheet().environmentObject(store)
+                GoalCalculatorSheet().environment(store)
             }
             .sheet(isPresented: $showingNewQuickAmount) {
                 AmountInputSheet(
@@ -94,7 +102,7 @@ struct SettingsView: View {
 
     private var unitSection: some View {
         Section("Unidade") {
-            Picker("Unidade", selection: $store.settings.unit) {
+            Picker("Unidade", selection: bindableStore.settings.unit) {
                 ForEach(VolumeUnit.allCases) { item in
                     Text(item.displayName).tag(item)
                 }
@@ -138,15 +146,15 @@ struct SettingsView: View {
             Toggle("Lembretes de hidratação", isOn: remindersBinding)
 
             if store.settings.remindersEnabled {
-                Picker("A cada", selection: $store.settings.reminderIntervalHours) {
+                Picker("A cada", selection: bindableStore.settings.reminderIntervalHours) {
                     ForEach([1, 2, 3, 4], id: \.self) { hours in
                         Text(hours == 1 ? "1 hora" : "\(hours) horas").tag(hours)
                     }
                 }
-                Picker("Começar às", selection: $store.settings.reminderStartHour) {
+                Picker("Começar às", selection: bindableStore.settings.reminderStartHour) {
                     hourOptions
                 }
-                Picker("Parar às", selection: $store.settings.reminderEndHour) {
+                Picker("Parar às", selection: bindableStore.settings.reminderEndHour) {
                     hourOptions
                 }
             }
@@ -171,7 +179,8 @@ struct SettingsView: View {
                     store.settings.remindersEnabled = false
                     return
                 }
-                NotificationManager.requestAuthorization { granted in
+                Task {
+                    let granted = await NotificationManager.requestAuthorization()
                     store.settings.remindersEnabled = granted
                     showingPermissionAlert = !granted
                 }
@@ -191,7 +200,7 @@ struct SettingsView: View {
         } header: {
             Text("Dados")
         } footer: {
-            Text("Água Diária 1.0 — tudo fica salvo apenas neste iPhone.")
+            Text("Água Diária 1.1 — tudo fica salvo apenas neste iPhone.")
         }
     }
 }
@@ -199,7 +208,7 @@ struct SettingsView: View {
 // MARK: - Calculadora de meta
 
 struct GoalCalculatorSheet: View {
-    @EnvironmentObject private var store: WaterStore
+    @Environment(WaterStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     @State private var weight: Double = 70
@@ -258,6 +267,7 @@ struct GoalCalculatorSheet: View {
                         store.settings.dailyGoalML = (suggestedML / 50).rounded() * 50
                         dismiss()
                     }
+                    .primaryGlassButton()
                 } footer: {
                     Text("Estimativa geral, arredondada para múltiplos de 50 ml. Não substitui orientação de um profissional de saúde.")
                 }
@@ -271,4 +281,9 @@ struct GoalCalculatorSheet: View {
             }
         }
     }
+}
+
+#Preview {
+    SettingsView()
+        .environment(WaterStore())
 }

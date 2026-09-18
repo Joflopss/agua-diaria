@@ -4,12 +4,15 @@
 //
 //  Aba "Histórico": gráfico de barras (Swift Charts, iOS 16+) e resumo.
 //
+//  Usa @Environment(WaterStore.self) (padrão @Observable) no lugar de
+//  @EnvironmentObject.
+//
 
 import SwiftUI
 import Charts
 
 struct HistoryView: View {
-    @EnvironmentObject private var store: WaterStore
+    @Environment(WaterStore.self) private var store
     @State private var period: Period = .week
 
     enum Period: String, CaseIterable, Identifiable {
@@ -63,7 +66,9 @@ struct HistoryView: View {
                             systemImage: "flame.fill"
                         )
                     }
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 10)
+                    .liquidGlassCard(cornerRadius: 20)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 }
 
                 Section("Dia a dia") {
@@ -125,4 +130,9 @@ struct HistoryView: View {
             ? .dateTime.weekday(.narrow)
             : .dateTime.day().month(.narrow)
     }
+}
+
+#Preview {
+    HistoryView()
+        .environment(WaterStore())
 }
